@@ -13,7 +13,7 @@ class SendGift extends plugin_1.default {
         super();
         this.name = '自动送礼';
         this.description = '在指定房间送出剩余时间不足24小时的礼物';
-        this.version = '0.0.1';
+        this.version = '0.0.2';
         this.author = 'lzghzr';
     }
     async load({ defaultOptions, whiteList }) {
@@ -37,7 +37,7 @@ class SendGift extends plugin_1.default {
         this._sendGift(users);
     }
     async loop({ cstMin, cstHour, cstString, users }) {
-        if (cstMin === 30 && cstHour % 8 === 4 || cstString === '13:55')
+        if (cstMin === 30 && cstHour % 8 === 4 || cstString === '13:55' || cstString === '23:55')
             this._sendGift(users);
     }
     _sendGift(users) {
@@ -46,8 +46,8 @@ class SendGift extends plugin_1.default {
                 return;
             const roomID = user.userData.sendGiftRoom;
             const room = {
-                uri: `https://api.live.bilibili.com/room/v1/Room/mobileRoomInit?id=${roomID}}`,
-                json: true
+                url: `https://api.live.bilibili.com/room/v1/Room/mobileRoomInit?id=${roomID}}`,
+                responseType: 'json'
             };
             const roomInit = await plugin_1.tools.XHR(room, 'Android');
             if (roomInit !== undefined && roomInit.response.statusCode === 200) {
@@ -55,8 +55,8 @@ class SendGift extends plugin_1.default {
                     const mid = roomInit.body.data.uid;
                     const room_id = roomInit.body.data.room_id;
                     const bag = {
-                        uri: `https://api.live.bilibili.com/gift/v2/gift/m_bag_list?${plugin_1.AppClient.signQueryBase(user.tokenQuery)}`,
-                        json: true,
+                        url: `https://api.live.bilibili.com/gift/v2/gift/m_bag_list?${plugin_1.AppClient.signQueryBase(user.tokenQuery)}`,
+                        responseType: 'json',
                         headers: user.headers
                     };
                     const bagInfo = await plugin_1.tools.XHR(bag, 'Android');
@@ -67,10 +67,10 @@ class SendGift extends plugin_1.default {
                                     if (giftData.expireat > 0 && giftData.expireat < 24 * 60 * 60) {
                                         const send = {
                                             method: 'POST',
-                                            uri: `https://api.live.bilibili.com/gift/v2/live/bag_send?${plugin_1.AppClient.signQueryBase(user.tokenQuery)}`,
+                                            url: `https://api.live.bilibili.com/gift/v2/live/bag_send?${plugin_1.AppClient.signQueryBase(user.tokenQuery)}`,
                                             body: `uid=${giftData.uid}&ruid=${mid}&gift_id=${giftData.gift_id}&gift_num=${giftData.gift_num}\
 &bag_id=${giftData.id}&biz_id=${room_id}&rnd=${plugin_1.AppClient.RND}&biz_code=live&jumpFrom=21002`,
-                                            json: true,
+                                            responseType: 'json',
                                             headers: user.headers
                                         };
                                         const sendBag = await plugin_1.tools.XHR(send, 'Android');

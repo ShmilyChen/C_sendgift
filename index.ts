@@ -1,4 +1,3 @@
-import { Options as requestOptions } from 'request'
 import Plugin, { tools, AppClient } from '../../plugin'
 
 class SendGift extends Plugin {
@@ -7,7 +6,7 @@ class SendGift extends Plugin {
   }
   public name = '自动送礼'
   public description = '在指定房间送出剩余时间不足24小时的礼物'
-  public version = '0.0.1'
+  public version = '0.0.2'
   public author = 'lzghzr'
   public async load({ defaultOptions, whiteList }: { defaultOptions: options, whiteList: Set<string> }) {
     // 自动送礼
@@ -32,8 +31,8 @@ class SendGift extends Plugin {
     this._sendGift(users)
   }
   public async loop({ cstMin, cstHour, cstString, users }: { cstMin: number, cstHour: number, cstString: string, users: Map<string, User> }) {
-    // 每天04:30, 12:30, 13:55, 20:30自动送礼, 因为一般活动14:00结束
-    if (cstMin === 30 && cstHour % 8 === 4 || cstString === '13:55') this._sendGift(users)
+    // 每天04:30, 12:30, 13:55, 20:30, 23:55自动送礼
+    if (cstMin === 30 && cstHour % 8 === 4 || cstString === '13:55' || cstString === '23:55') this._sendGift(users)
   }
   /**
    * 自动送礼
@@ -46,9 +45,9 @@ class SendGift extends Plugin {
       if (!user.userData['sendGift'] || user.userData['sendGiftRoom'] === 0) return
       const roomID = user.userData.sendGiftRoom
       // 获取房间信息
-      const room: requestOptions = {
-        uri: `https://api.live.bilibili.com/room/v1/Room/mobileRoomInit?id=${roomID}}`,
-        json: true
+      const room: XHRoptions = {
+        url: `https://api.live.bilibili.com/room/v1/Room/mobileRoomInit?id=${roomID}}`,
+        responseType: 'json'
       }
       const roomInit = await tools.XHR<roomInit>(room, 'Android')
       if (roomInit !== undefined && roomInit.response.statusCode === 200) {
@@ -57,9 +56,9 @@ class SendGift extends Plugin {
           const mid = roomInit.body.data.uid
           const room_id = roomInit.body.data.room_id
           // 获取包裹信息
-          const bag: requestOptions = {
-            uri: `https://api.live.bilibili.com/gift/v2/gift/m_bag_list?${AppClient.signQueryBase(user.tokenQuery)}`,
-            json: true,
+          const bag: XHRoptions = {
+            url: `https://api.live.bilibili.com/gift/v2/gift/m_bag_list?${AppClient.signQueryBase(user.tokenQuery)}`,
+            responseType: 'json',
             headers: user.headers
           }
           const bagInfo = await tools.XHR<bagInfo>(bag, 'Android')
@@ -69,12 +68,12 @@ class SendGift extends Plugin {
                 for (const giftData of bagInfo.body.data) {
                   if (giftData.expireat > 0 && giftData.expireat < 24 * 60 * 60) {
                     // expireat单位为分钟, 永久礼物值为0
-                    const send: requestOptions = {
+                    const send: XHRoptions = {
                       method: 'POST',
-                      uri: `https://api.live.bilibili.com/gift/v2/live/bag_send?${AppClient.signQueryBase(user.tokenQuery)}`,
+                      url: `https://api.live.bilibili.com/gift/v2/live/bag_send?${AppClient.signQueryBase(user.tokenQuery)}`,
                       body: `uid=${giftData.uid}&ruid=${mid}&gift_id=${giftData.gift_id}&gift_num=${giftData.gift_num}\
 &bag_id=${giftData.id}&biz_id=${room_id}&rnd=${AppClient.RND}&biz_code=live&jumpFrom=21002`,
-                      json: true,
+                      responseType: 'json',
                       headers: user.headers
                     }
                     const sendBag = await tools.XHR<sendBag>(send, 'Android')
